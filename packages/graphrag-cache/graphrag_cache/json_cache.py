@@ -42,8 +42,13 @@ class JsonCache(Cache):
             except json.decoder.JSONDecodeError:
                 await self._storage.delete(key)
                 return None
-            else:
-                return data.get("result")
+            # A syntactically valid payload is not necessarily an envelope: a
+            # list, scalar, or a row from another schema would make .get("result")
+            # raise. Purge it so the next call does not fail the same way.
+            if not isinstance(data, dict) or "result" not in data:
+                await self._storage.delete(key)
+                return None
+            return data["result"]
 
         return None
 
